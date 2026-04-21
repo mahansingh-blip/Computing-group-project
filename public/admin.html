@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StoreFlow | Admin Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body>
+  <script src="/assets/js/app.js"></script>
+  <script>
+    app.requireAuth();
+
+    const user = app.getUser();
+    if (!user || user.role !== 'ADMIN') {
+      alert('Admin access only.');
+      window.location.href = '/dashboard.html';
+    }
+
+    app.renderLayout('Admin Product Panel', `
+      <section class="hero" style="margin-bottom:16px;">
+        <div>
+          <span class="kicker">Admin Control Center</span>
+          <h1>Manage your catalog with full product control.</h1>
+          <p>Create, update, and remove products from one responsive panel. Changes are applied instantly to the storefront.</p>
+        </div>
+        <div class="card">
+          <h3>Catalog Health</h3>
+          <p id="productCount" class="muted">Loading...</p>
+          <p class="muted">Use the form below to add a new product or edit an existing one.</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3 id="formTitle">Add New Product</h3>
+        <form id="adminProductForm" class="form">
+          <input type="hidden" name="productId" id="productIdField">
+          <div class="form-row">
+            <label>Category
+              <select name="categoryId" id="adminCategorySelect" required>
+                <option value="">Select category</option>
+              </select>
+            </label>
+            <label>SKU<input type="text" name="sku" required></label>
+          </div>
+          <div class="form-row">
+            <label>Product Name<input type="text" name="productName" required></label>
+            <label>Unit Price<input type="number" step="0.01" min="0" name="unitPrice" required></label>
+          </div>
+          <div class="form-row">
+            <label>Stock Quantity<input type="number" min="0" name="stockQuantity" value="0"></label>
+            <label>Image URL<input type="text" name="imageUrl"></label>
+          </div>
+          <label>Upload Image<input type="file" name="imageFile" accept="image/*"></label>
+          <p class="muted">Choose either an image file or paste an image URL. If both are provided, the uploaded file is used.</p>
+          <label>Description<textarea name="description" rows="3" placeholder="Short product description"></textarea></label>
+          <div class="stack">
+            <button class="btn primary" type="submit" id="submitBtn">Add Product</button>
+            <button class="btn" type="button" id="cancelEditBtn">Reset Form</button>
+          </div>
+          <p id="adminMsg"></p>
+        </form>
+      </section>
+
+      <section class="card" style="margin-top:16px;">
+        <div class="stack" style="justify-content:space-between; align-items:center;">
+          <h3>Current Products</h3>
+          <span class="badge">Edit / Delete / Deactivate</span>
+        </div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Stock</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="adminProductsBody"></tbody>
+        </table>
+      </section>
+    `);
+
+    async function loadCategories() {
+      const categories = await app.api('/categories');
+      const select = document.getElementById('adminCategorySelect');
+      select.innerHTML += categories.map((c) => `
+        <option value="${c.category_id}">${c.category_name}</option>
+      `).join('');
+    }
+
+    async function loadProducts() {
+      const products = await app.api('/products?sort=newest&includeInactive=1');
+      const tbody = document.getElementById('adminProductsBody');
+      document.getElementById('productCount').textContent = `${products.length} product${products.length === 1 ? '' : 's'} available`;
+
+      tbody.innerHTML = products.length
+        ? products.map((p) => `
+          <tr>
+            <td>${p.product_id}</td>
+            <td>${p.product_name}</td>
+            <td>${p.category_name}</td>
+            <td>${app.money(p.unit_price)}</td>
+            <td>${p.stock_quantity}</td>
+            <td>${p.is_active ? '<span class="badge">Active</span>' : '<span class="badge">Inactive</span>'}</td>
+            <td>
+              <div class="stack">
+                <button class="btn" data-edit="${p.product_id}">Edit</button>
+                <button class="btn danger" data-delete="${p.product_id}">Delete</button>
+              </div>
+            </td>
+          </tr>
+        `).join('')
+        : '<tr><td colspan="7" class="muted">No products found.</td></tr>';
+
+      document.querySelectorAll('[data-edit]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const product = products.find((item) => String(item.product_id) === String(btn.dataset.edit));
+          if (!product) return;
+          fillForm(product);
+        });
+      });
+
+      document.querySelectorAll('[data-delete]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.delete;
+          if (!confirm('Delete this product? This will deactivate it.')) return;
+          try {
+            await app.api(`/products/${id}`, { method: 'DELETE' });
+            await loadProducts();
+          } catch (error) {
+            alert(error.message);
+          }
+        });
+      });
+    }
+
+    function fillForm(product) {
+      document.getElementById('formTitle').textContent = `Edit Product #${product.product_id}`;
+      document.getElementById('submitBtn').textContent = 'Update Product';
+      document.getElementById('productIdField').value = product.product_id;
+      const form = document.getElementById('adminProductForm');
+      form.categoryId.value = Array.from(form.categoryId.options).find((opt) => opt.textContent === product.category_name)?.value || '';
+      form.sku.value = product.sku || '';
+      form.productName.value = product.product_name || '';
+      form.unitPrice.value = product.unit_price || '';
+      form.stockQuantity.value = product.stock_quantity ?? 0;
+      form.imageUrl.value = product.image_url || '';
+      form.description.value = product.description || '';
+    }
+
+    function resetForm() {
+      const form = document.getElementById('adminProductForm');
+      form.reset();
+      document.getElementById('productIdField').value = '';
+      document.getElementById('formTitle').textContent = 'Add New Product';
+      document.getElementById('submitBtn').textContent = 'Add Product';
+      document.getElementById('adminCategorySelect').value = '';
+    }
+
+    document.getElementById('adminProductForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('adminMsg');
+      msg.textContent = '';
+
+      try {
+        const productId = document.getElementById('productIdField').value;
+        const method = productId ? 'PUT' : 'POST';
+        const endpoint = productId ? `/products/${productId}` : '/products';
+        const form = new FormData(e.target);
+
+        form.set('categoryId', form.get('categoryId'));
+        form.set('sku', form.get('sku'));
+        form.set('productName', form.get('productName'));
+        form.set('description', form.get('description') || '');
+        form.set('unitPrice', form.get('unitPrice'));
+        form.set('stockQuantity', form.get('stockQuantity') || '0');
+
+        if (!form.get('imageUrl')) {
+          form.delete('imageUrl');
+        }
+
+        if (!form.get('imageFile') || !form.get('imageFile').name) {
+          form.delete('imageFile');
+        }
+
+        await app.api(endpoint, {
+          method,
+          body: form
+        });
+
+        msg.className = 'success';
+        msg.textContent = productId ? 'Product updated successfully.' : 'Product added successfully.';
+        resetForm();
+        await loadProducts();
+      } catch (error) {
+        msg.className = 'warn';
+        msg.textContent = error.message;
+      }
+    });
+
+    document.getElementById('cancelEditBtn').addEventListener('click', resetForm);
+
+    Promise.all([loadCategories(), loadProducts()]).catch((error) => {
+      const msg = document.getElementById('adminMsg');
+      if (msg) {
+        msg.className = 'warn';
+        msg.textContent = error.message;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StoreFlow | Register</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body>
+  <script src="/assets/js/app.js"></script>
+  <script>
+    app.renderLayout('Register', `
+      <section class="card" style="max-width: 640px; margin: 20px auto;">
+        <form id="registerForm" class="form">
+          <div class="form-row">
+            <label>First Name<input type="text" name="firstName" required></label>
+            <label>Last Name<input type="text" name="lastName" required></label>
+          </div>
+          <div class="form-row">
+            <label>Email<input type="email" name="email" required></label>
+            <label>Phone<input type="text" name="phone"></label>
+          </div>
+          <label>Password<input type="password" name="password" required minlength="6"></label>
+          <button class="btn primary" type="submit">Create Account</button>
+          <p class="muted">Already registered? <a href="/login.html">Sign in</a>.</p>
+          <p id="msg"></p>
+        </form>
+      </section>
+    `);
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('msg');
+      msg.textContent = '';
+
+      try {
+        const form = new FormData(e.target);
+        const payload = Object.fromEntries(form.entries());
+
+        await app.api('/auth/register', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+
+        msg.className = 'success';
+        msg.textContent = 'Registration successful. Redirecting to login...';
+        setTimeout(() => { window.location.href = '/login.html'; }, 1000);
+      } catch (error) {
+        msg.className = 'warn';
+        msg.textContent = error.message;
+      }
+    });
+  </script>
+</body>
+</html>

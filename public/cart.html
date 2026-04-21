@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StoreFlow | Cart</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body>
+  <script src="/assets/js/app.js"></script>
+  <script>
+    app.requireAuth();
+
+    app.renderLayout('Shopping Cart', `
+      <section class="card">
+        <table class="table">
+          <thead><tr><th>Product</th><th>Qty</th><th>Unit</th><th>Total</th><th>Action</th></tr></thead>
+          <tbody id="cartBody"></tbody>
+        </table>
+        <h3 style="margin-top: 14px;">Grand Total: <span id="grandTotal">$0.00</span></h3>
+        <div class="stack" style="margin-top: 10px;">
+          <a class="btn primary" href="/checkout.html">Proceed to Checkout</a>
+          <a class="btn" href="/products.html">Continue Shopping</a>
+        </div>
+      </section>
+    `);
+
+    async function loadCart() {
+      const data = await app.api('/cart');
+      document.getElementById('grandTotal').textContent = app.money(data.total);
+
+      document.getElementById('cartBody').innerHTML = data.items.length
+        ? data.items.map((i) => `
+          <tr>
+            <td>${i.product_name}</td>
+            <td><input type="number" min="1" value="${i.quantity}" data-qty-id="${i.cart_item_id}" style="max-width:80px;"></td>
+            <td>${app.money(i.unit_price_snapshot)}</td>
+            <td>${app.money(i.line_total)}</td>
+            <td><button class="btn danger" data-del-id="${i.cart_item_id}">Remove</button></td>
+          </tr>
+        `).join('')
+        : '<tr><td colspan="5" class="muted">Your cart is empty.</td></tr>';
+
+      document.querySelectorAll('[data-qty-id]').forEach((input) => {
+        input.addEventListener('change', async () => {
+          await app.api(`/cart/items/${input.dataset.qtyId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ quantity: Number(input.value) })
+          });
+          loadCart();
+        });
+      });
+
+      document.querySelectorAll('[data-del-id]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          await app.api(`/cart/items/${button.dataset.delId}`, { method: 'DELETE' });
+          loadCart();
+        });
+      });
+    }
+
+    loadCart().catch((e) => alert(e.message));
+  </script>
+</body>
+</html>

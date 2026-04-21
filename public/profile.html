@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StoreFlow | Profile</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body>
+  <script src="/assets/js/app.js"></script>
+  <script>
+    app.requireAuth();
+
+    app.renderLayout('Profile', `
+      <section class="card" style="max-width:720px;">
+        <form id="profileForm" class="form">
+          <div class="form-row">
+            <label>First Name<input type="text" name="firstName" required></label>
+            <label>Last Name<input type="text" name="lastName" required></label>
+          </div>
+          <div class="form-row">
+            <label>Email<input type="email" name="email" readonly></label>
+            <label>Phone<input type="text" name="phone"></label>
+          </div>
+          <button class="btn primary" type="submit">Update Profile</button>
+          <p id="profileMsg"></p>
+        </form>
+      </section>
+    `);
+
+    async function loadProfile() {
+      const u = await app.api('/users/me');
+      const form = document.getElementById('profileForm');
+      form.firstName.value = u.first_name || '';
+      form.lastName.value = u.last_name || '';
+      form.email.value = u.email || '';
+      form.phone.value = u.phone || '';
+    }
+
+    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('profileMsg');
+      msg.textContent = '';
+
+      try {
+        const form = new FormData(e.target);
+        await app.api('/users/me', {
+          method: 'PUT',
+          body: JSON.stringify({
+            firstName: form.get('firstName'),
+            lastName: form.get('lastName'),
+            phone: form.get('phone')
+          })
+        });
+
+        const user = app.getUser();
+        if (user) {
+          user.firstName = form.get('firstName');
+          user.lastName = form.get('lastName');
+          localStorage.setItem('user', JSON.stringify(user));
+        }
+
+        msg.className = 'success';
+        msg.textContent = 'Profile updated successfully.';
+      } catch (error) {
+        msg.className = 'warn';
+        msg.textContent = error.message;
+      }
+    });
+
+    loadProfile().catch((e) => alert(e.message));
+  </script>
+</body>
+</html>

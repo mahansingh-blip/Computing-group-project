@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StoreFlow | Products</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body>
+  <script src="/assets/js/app.js"></script>
+  <script>
+    const loggedIn = Boolean(app.getToken());
+
+    app.renderLayout('Product Catalog', `
+      <section class="card">
+        <div class="form-row">
+          <label>Search Products<input id="searchInput" type="text" placeholder="Try headphones"></label>
+          <label>Category<select id="categorySelect"><option value="">All Categories</option></select></label>
+        </div>
+        <div class="form-row" style="margin-top:10px;">
+          <label>Min Price<input id="minPriceInput" type="number" min="0" placeholder="0"></label>
+          <label>Max Price<input id="maxPriceInput" type="number" min="0" placeholder="500"></label>
+        </div>
+        <div class="form-row" style="margin-top:10px; align-items:end;">
+          <label>Sort By
+            <select id="sortSelect">
+              <option value="newest">Newest</option>
+              <option value="price_asc">Price: Low to High</option>
+              <option value="price_desc">Price: High to Low</option>
+              <option value="name_asc">Name: A-Z</option>
+              <option value="name_desc">Name: Z-A</option>
+            </select>
+          </label>
+          <label><input id="stockOnlyInput" type="checkbox"> In-stock only</label>
+        </div>
+        <div class="stack" style="margin-top:10px;">
+          <button id="applyFiltersBtn" class="btn primary" type="button">Apply Filters</button>
+          <button id="resetFiltersBtn" class="btn" type="button">Reset</button>
+          <span id="resultCount" class="badge">0 items</span>
+        </div>
+      </section>
+      <section class="grid" id="productGrid" style="grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); margin-top: 16px;"></section>
+    `);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('q')) document.getElementById('searchInput').value = urlParams.get('q');
+    if (urlParams.get('category')) document.getElementById('categorySelect').value = urlParams.get('category');
+    if (urlParams.get('minPrice')) document.getElementById('minPriceInput').value = urlParams.get('minPrice');
+    if (urlParams.get('maxPrice')) document.getElementById('maxPriceInput').value = urlParams.get('maxPrice');
+    if (urlParams.get('sort')) document.getElementById('sortSelect').value = urlParams.get('sort');
+    if (urlParams.get('inStock') === '1') document.getElementById('stockOnlyInput').checked = true;
+
+    async function loadCategories() {
+      const categories = await app.api('/categories');
+      const select = document.getElementById('categorySelect');
+      select.innerHTML += categories.map((c) => `<option value="${c.category_name}">${c.category_name}</option>`).join('');
+
+      if (urlParams.get('category')) {
+        select.value = urlParams.get('category');
+      }
+    }
+
+    async function loadProducts() {
+      const q = document.getElementById('searchInput').value.trim();
+      const category = document.getElementById('categorySelect').value;
+      const minPrice = document.getElementById('minPriceInput').value;
+      const maxPrice = document.getElementById('maxPriceInput').value;
+      const sort = document.getElementById('sortSelect').value;
+      const inStock = document.getElementById('stockOnlyInput').checked;
+
+      const params = new URLSearchParams();
+      if (q) params.set('q', q);
+      if (category) params.set('category', category);
+      if (minPrice) params.set('minPrice', minPrice);
+      if (maxPrice) params.set('maxPrice', maxPrice);
+      if (sort) params.set('sort', sort);
+      if (inStock) params.set('inStock', '1');
+
+      const queryString = params.toString();
+      window.history.replaceState({}, '', queryString ? `/products.html?${queryString}` : '/products.html');
+
+      const products = await app.api(`/products?${queryString}`);
+      document.getElementById('resultCount').textContent = `${products.length} item${products.length === 1 ? '' : 's'}`;
+
+      document.getElementById('productGrid').innerHTML = products.length
+        ? products.map((p) => `
+            <article class="card product-card">
+              <img class="product-image" src="${app.randomProductImage(p)}" alt="${p.product_name}" loading="lazy">
+              <h3>${p.product_name}</h3>
+              <p class="muted">${p.category_name}</p>
+              <p>${p.description || 'No description available.'}</p>
+              <p><strong>${app.money(p.unit_price)}</strong></p>
+              <p class="muted">Stock: ${p.stock_quantity > 0 ? p.stock_quantity : 'Out of stock'}</p>
+              <div class="stack">
+                <input id="qty-${p.product_id}" type="number" min="1" max="20" value="1" style="max-width:80px;" ${p.stock_quantity === 0 ? 'disabled' : ''}>
+                <button class="btn primary" data-id="${p.product_id}" ${p.stock_quantity === 0 ? 'disabled' : ''}>${p.stock_quantity === 0 ? 'Unavailable' : 'Add to Cart'}</button>
+              </div>
+            </article>
+        `).join('')
+        : '<p class="muted">No products found.</p>';
+
+      document.querySelectorAll('button[data-id]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          if (!loggedIn) {
+            alert('Please login to add products to cart.');
+            window.location.href = '/login.html';
+            return;
+          }
+
+          const productId = Number(btn.dataset.id);
+          const qty = Number(document.getElementById(`qty-${productId}`).value || 1);
+          try {
+            await app.api('/cart/items', {
+              method: 'POST',
+              body: JSON.stringify({ productId, quantity: qty })
+            });
+            btn.textContent = 'Added';
+            setTimeout(() => { btn.textContent = 'Add to Cart'; }, 700);
+          } catch (error) {
+            alert(error.message);
+          }
+        });
+      });
+    }
+
+    document.addEventListener('change', (e) => {
+      if (e.target.id === 'categorySelect' || e.target.id === 'sortSelect' || e.target.id === 'stockOnlyInput') {
+        loadProducts();
+      }
+    });
+
+    document.addEventListener('input', (e) => {
+      if (e.target.id === 'searchInput') {
+        clearTimeout(window._productSearchTimer);
+        window._productSearchTimer = setTimeout(loadProducts, 250);
+      }
+    });
+
+    document.getElementById('applyFiltersBtn').addEventListener('click', loadProducts);
+    document.getElementById('resetFiltersBtn').addEventListener('click', () => {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('categorySelect').value = '';
+      document.getElementById('minPriceInput').value = '';
+      document.getElementById('maxPriceInput').value = '';
+      document.getElementById('sortSelect').value = 'newest';
+      document.getElementById('stockOnlyInput').checked = false;
+      loadProducts();
+    });
+
+    loadCategories().then(loadProducts).catch((e) => alert(e.message));
+  </script>
+</body>
+</html>

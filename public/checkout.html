@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StoreFlow | Checkout</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body>
+  <script src="/assets/js/app.js"></script>
+  <script>
+    app.requireAuth();
+
+    app.renderLayout('Checkout', `
+      <section class="card">
+        <h3>Delivery Address</h3>
+        <div id="addresses" class="grid" style="grid-template-columns: repeat(auto-fit, minmax(240px,1fr));"></div>
+      </section>
+      <section class="card" style="margin-top: 16px;">
+        <h3>Add New Address</h3>
+        <form id="addressForm" class="form">
+          <div class="form-row">
+            <label>Label<input name="label" placeholder="Home"></label>
+            <label>Recipient Name<input name="recipientName" required></label>
+          </div>
+          <label>Address Line 1<input name="line1" required></label>
+          <label>Address Line 2<input name="line2"></label>
+          <div class="form-row">
+            <label>City<input name="city" required></label>
+            <label>State<input name="state"></label>
+          </div>
+          <div class="form-row">
+            <label>Postal Code<input name="postalCode" required></label>
+            <label>Country<input name="country" required value="Sri Lanka"></label>
+          </div>
+          <label><input type="checkbox" name="isDefault"> Set as default</label>
+          <button class="btn" type="submit">Save Address</button>
+        </form>
+      </section>
+      <section class="card" style="margin-top: 16px;">
+        <h3>Payment</h3>
+        <form id="checkoutForm" class="form">
+          <label>Payment Method
+            <select name="paymentMethod">
+              <option value="COD">Cash on Delivery</option>
+              <option value="CARD">Card</option>
+              <option value="EWALLET">E-Wallet</option>
+              <option value="BANK_TRANSFER">Bank Transfer</option>
+            </select>
+          </label>
+          <button class="btn primary" type="submit">Place Order</button>
+          <p id="checkoutMsg"></p>
+        </form>
+      </section>
+    `);
+
+    let selectedAddressId = null;
+
+    async function loadAddresses() {
+      const addresses = await app.api('/addresses');
+      const container = document.getElementById('addresses');
+
+      if (!addresses.length) {
+        container.innerHTML = '<p class="muted">No addresses yet. Add one below.</p>';
+        selectedAddressId = null;
+        return;
+      }
+
+      const defaultAddress = addresses.find((a) => a.is_default === 1) || addresses[0];
+      selectedAddressId = selectedAddressId || defaultAddress.address_id;
+
+      container.innerHTML = addresses.map((a) => `
+        <article class="card" style="border: ${a.address_id === selectedAddressId ? '2px solid #0f766e' : '1px solid #d6d3d1'};">
+          <h3>${a.label || 'Address'}</h3>
+          <p>${a.recipient_name}</p>
+          <p>${a.line1} ${a.line2 || ''}</p>
+          <p>${a.city}, ${a.state || ''} ${a.postal_code}</p>
+          <p>${a.country}</p>
+          <div class="stack">
+            <button class="btn" data-select="${a.address_id}">Use This</button>
+            <button class="btn danger" data-delete="${a.address_id}">Delete</button>
+          </div>
+        </article>
+      `).join('');
+
+      document.querySelectorAll('[data-select]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          selectedAddressId = Number(btn.dataset.select);
+          await app.api(`/addresses/${selectedAddressId}/default`, { method: 'PATCH' });
+          loadAddresses();
+        });
+      });
+
+      document.querySelectorAll('[data-delete]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          await app.api(`/addresses/${btn.dataset.delete}`, { method: 'DELETE' });
+          if (selectedAddressId === Number(btn.dataset.delete)) {
+            selectedAddressId = null;
+          }
+          loadAddresses();
+        });
+      });
+    }
+
+    document.getElementById('addressForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = new FormData(e.target);
+      const payload = {
+        label: form.get('label'),
+        recipientName: form.get('recipientName'),
+        line1: form.get('line1'),
+        line2: form.get('line2'),
+        city: form.get('city'),
+        state: form.get('state'),
+        postalCode: form.get('postalCode'),
+        country: form.get('country'),
+        isDefault: form.get('isDefault') === 'on'
+      };
+
+      await app.api('/addresses', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      e.target.reset();
+      await loadAddresses();
+    });
+
+    document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('checkoutMsg');
+      msg.textContent = '';
+
+      try {
+        const form = new FormData(e.target);
+        const payload = {
+          paymentMethod: form.get('paymentMethod')
+        };
+
+        if (selectedAddressId) {
+          payload.addressId = selectedAddressId;
+        }
+
+        const result = await app.api('/orders/checkout', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+
+        msg.className = 'success';
+        msg.textContent = `Order placed successfully: ${result.orderNumber}`;
+        setTimeout(() => { window.location.href = '/orders.html'; }, 1000);
+      } catch (error) {
+        msg.className = 'warn';
+        msg.textContent = error.message;
+      }
+    });
+
+    loadAddresses().catch((e) => alert(e.message));
+  </script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StoreFlow | Notifications</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body>
+  <script src="/assets/js/app.js"></script>
+  <script>
+    app.requireAuth();
+
+    app.renderLayout('Notifications', '<section class="grid" id="notificationList"></section>');
+
+    async function loadNotifications() {
+      const rows = await app.api('/notifications');
+      const list = document.getElementById('notificationList');
+
+      list.innerHTML = rows.length
+        ? rows.map((n) => `
+          <article class="card">
+            <div class="stack" style="justify-content:space-between; align-items:center;">
+              <h3>${n.title}</h3>
+              <span class="badge">${n.notification_type}</span>
+            </div>
+            <p>${n.message}</p>
+            <p class="muted">${new Date(n.created_at).toLocaleString()}</p>
+            ${n.is_read ? '<p class="success">Read</p>' : `<button class="btn" data-read="${n.notification_id}">Mark as Read</button>`}
+          </article>
+        `).join('')
+        : '<p class="muted">No notifications available.</p>';
+
+      document.querySelectorAll('[data-read]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          await app.api(`/notifications/${btn.dataset.read}/read`, { method: 'PATCH' });
+          loadNotifications();
+        });
+      });
+    }
+
+    loadNotifications().catch((e) => alert(e.message));
+  </script>
+</body>
+</html>

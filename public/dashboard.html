@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StoreFlow | Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body>
+  <script src="/assets/js/app.js"></script>
+  <script>
+    app.requireAuth();
+
+    app.renderLayout('Dashboard', `
+      <div class="grid cards" id="statCards"></div>
+      <section class="card" style="margin-top:16px;">
+        <h3>Recent Orders</h3>
+        <table class="table">
+          <thead><tr><th>Order</th><th>Status</th><th>Total</th><th>Date</th></tr></thead>
+          <tbody id="ordersBody"></tbody>
+        </table>
+      </section>
+    `);
+
+    async function loadDashboard() {
+      try {
+        const data = await app.api('/dashboard/summary');
+        const stats = [
+          { title: 'Total Orders', value: data.orderStats.total_orders },
+          { title: 'Active Orders', value: data.orderStats.active_orders },
+          { title: 'Total Spent', value: app.money(data.orderStats.total_spent) },
+          { title: 'Cart Total', value: app.money(data.cartStats.cart_total) }
+        ];
+
+        document.getElementById('statCards').innerHTML = stats
+          .map((s) => `<article class="card"><h3>${s.title}</h3><p style="font-size:1.7rem; font-weight:700;">${s.value}</p></article>`)
+          .join('');
+
+        document.getElementById('ordersBody').innerHTML = data.recentOrders.length
+          ? data.recentOrders.map((o) => `
+            <tr>
+              <td>${o.order_number}</td>
+              <td><span class="badge">${o.order_status}</span></td>
+              <td>${app.money(o.total_amount)}</td>
+              <td>${new Date(o.placed_at).toLocaleString()}</td>
+            </tr>
+          `).join('')
+          : '<tr><td colspan="4" class="muted">No orders yet.</td></tr>';
+      } catch (error) {
+        document.getElementById('statCards').innerHTML = `<p class="warn">${error.message}</p>`;
+      }
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StoreFlow | Orders</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body>
+  <script src="/assets/js/app.js"></script>
+  <script>
+    app.requireAuth();
+
+    app.renderLayout('Order History', `
+      <section class="card">
+        <table class="table">
+          <thead><tr><th>Order Number</th><th>Status</th><th>Total</th><th>Placed At</th><th>Actions</th></tr></thead>
+          <tbody id="ordersBody"></tbody>
+        </table>
+      </section>
+      <section class="card" style="margin-top:16px;">
+        <h3>Order Details</h3>
+        <div id="details" class="muted">Select an order to see item breakdown.</div>
+      </section>
+    `);
+
+    async function loadOrders() {
+      const orders = await app.api('/orders');
+      document.getElementById('ordersBody').innerHTML = orders.length
+        ? orders.map((o) => `
+          <tr>
+            <td>${o.order_number}</td>
+            <td><span class="badge">${o.order_status}</span></td>
+            <td>${app.money(o.total_amount)}</td>
+            <td>${new Date(o.placed_at).toLocaleString()}</td>
+            <td class="stack">
+              <button class="btn" data-view="${o.order_id}">View</button>
+              ${o.order_status !== 'CANCELLED' && o.order_status !== 'DELIVERED' ? `<button class="btn danger" data-cancel="${o.order_id}">Cancel</button>` : ''}
+            </td>
+          </tr>
+        `).join('')
+        : '<tr><td colspan="5" class="muted">No orders found.</td></tr>';
+
+      document.querySelectorAll('[data-view]').forEach((btn) => {
+        btn.addEventListener('click', () => viewOrder(btn.dataset.view));
+      });
+
+      document.querySelectorAll('[data-cancel]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          await app.api(`/orders/${btn.dataset.cancel}/cancel`, { method: 'PATCH' });
+          loadOrders();
+          document.getElementById('details').innerHTML = '<p class="success">Order cancelled successfully.</p>';
+        });
+      });
+    }
+
+    async function viewOrder(orderId) {
+      const o = await app.api(`/orders/${orderId}`);
+      document.getElementById('details').innerHTML = `
+        <p><strong>${o.order_number}</strong> | ${o.order_status} | ${app.money(o.total_amount)}</p>
+        <table class="table">
+          <thead><tr><th>Product</th><th>Qty</th><th>Unit</th><th>Line Total</th></tr></thead>
+          <tbody>
+            ${o.items.map((i) => `
+              <tr>
+                <td>${i.product_name}</td>
+                <td>${i.quantity}</td>
+                <td>${app.money(i.unit_price)}</td>
+                <td>${app.money(i.line_total)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    loadOrders().catch((e) => alert(e.message));
+  </script>
+</body>
+</html>

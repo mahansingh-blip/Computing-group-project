@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StoreFlow | Home</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body>
+  <script src="/assets/js/app.js"></script>
+  <script>
+    const user = app.getUser();
+    app.renderLayout('StoreFlow Marketplace', `
+      <section class="hero home-hero">
+        <div>
+          <span class="kicker">Spring Collections 2026</span>
+          <h1>Style your life with smart picks and daily deals.</h1>
+          <p>Shop electronics, fashion, and home essentials in one smooth store experience with fast checkout and real-time order updates.</p>
+          <form id="homeSearchForm" class="stack" style="margin: 14px 0;">
+            <input id="homeSearchInput" type="text" placeholder="Search products, brands, categories" style="min-width:260px; max-width:420px;">
+            <button class="btn primary" type="submit">Search Store</button>
+          </form>
+          <div class="stack">
+            <a class="btn primary" href="${user ? '/products.html' : '/register.html'}">${user ? 'Start Shopping' : 'Join Now'}</a>
+            <a class="btn" href="${user ? '/orders.html' : '/login.html'}">${user ? 'Track Orders' : 'Sign In'}</a>
+          </div>
+          <div class="stack" style="margin-top:12px;">
+            <span class="badge">Free shipping over $100</span>
+            <span class="badge">Secure checkout</span>
+            <span class="badge">24/7 order tracking</span>
+          </div>
+        </div>
+        <div class="promo-block">
+          <div class="promo-tile">
+            <p class="muted">Deal of the day</p>
+            <h3>Up to 30% off smart watches</h3>
+            <a class="btn" href="/products.html?q=watch">Shop Deal</a>
+          </div>
+          <div class="promo-tile">
+            <p class="muted">New arrivals</p>
+            <h3>Fresh home office picks</h3>
+            <a class="btn" href="/products.html?category=Home">Explore Home</a>
+          </div>
+        </div>
+      </section>
+
+      <section style="margin-top:20px;">
+        <h2>Shop by Category</h2>
+        <div id="categoryHighlights" class="grid category-grid"></div>
+      </section>
+
+      <section style="margin-top:20px;">
+        <h2>Featured Products</h2>
+        <div id="featuredProducts" class="grid" style="grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));"></div>
+      </section>
+
+      <section class="grid cards" style="margin-top:20px;">
+        <article class="card"><h3>Fast Delivery</h3><p>Reliable shipping network with status updates from checkout to delivery.</p></article>
+        <article class="card"><h3>Trusted Payments</h3><p>Checkout with secure payment methods and encrypted transaction flow.</p></article>
+        <article class="card"><h3>Smart Dashboard</h3><p>Track purchase history, active orders, and cart summary in one place.</p></article>
+        <article class="card"><h3>Customer First</h3><p>Designed for simple browsing, clean filters, and quick product discovery.</p></article>
+      </section>
+    `);
+
+    document.getElementById('homeSearchForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const q = document.getElementById('homeSearchInput').value.trim();
+      if (!q) {
+        window.location.href = '/products.html';
+        return;
+      }
+      window.location.href = `/products.html?q=${encodeURIComponent(q)}`;
+    });
+
+    async function loadHomeData() {
+      try {
+        const [categories, products] = await Promise.all([
+          app.api('/categories'),
+          app.api('/products?sort=newest')
+        ]);
+
+        const categoryContainer = document.getElementById('categoryHighlights');
+        categoryContainer.innerHTML = categories.map((c) => `
+          <a class="category-card" href="/products.html?category=${encodeURIComponent(c.category_name)}">
+            <h3>${c.category_name}</h3>
+            <p>${c.description || 'Explore this category.'}</p>
+            <span class="badge">Browse now</span>
+          </a>
+        `).join('');
+
+        const featured = products.slice(0, 8);
+        const featuredContainer = document.getElementById('featuredProducts');
+        featuredContainer.innerHTML = featured.map((p) => `
+          <article class="card product-card">
+            <img class="product-image" src="${app.randomProductImage(p)}" alt="${p.product_name}" loading="lazy">
+            <h3>${p.product_name}</h3>
+            <p class="muted">${p.category_name}</p>
+            <p>${p.description || 'No description available.'}</p>
+            <p><strong>${app.money(p.unit_price)}</strong></p>
+            <a class="btn" href="/products.html?q=${encodeURIComponent(p.product_name)}">View Product</a>
+          </article>
+        `).join('');
+      } catch (error) {
+        const featuredContainer = document.getElementById('featuredProducts');
+        featuredContainer.innerHTML = `<p class="warn">${error.message}</p>`;
+      }
+    }
+
+    loadHomeData();
+  </script>
+</body>
+</html>

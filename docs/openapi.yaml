@@ -1,0 +1,112 @@
+openapi: 3.0.3
+info:
+  title: StoreFlow API
+  version: 1.0.0
+  description: API documentation for the StoreFlow online retail system.
+servers:
+  - url: http://localhost:4000
+    description: Local server
+paths:
+  /api/health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: API is healthy
+  /api/auth/register:
+    post:
+      summary: Register user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [firstName, lastName, email, password]
+              properties:
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '201':
+          description: User registered
+  /api/auth/login:
+    post:
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+  /api/products:
+    get:
+      summary: List products with filters
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+        - in: query
+          name: category
+          schema:
+            type: string
+        - in: query
+          name: minPrice
+          schema:
+            type: number
+        - in: query
+          name: maxPrice
+          schema:
+            type: number
+        - in: query
+          name: inStock
+          schema:
+            type: string
+            enum: ['1']
+      responses:
+        '200':
+          description: Product list
+    post:
+      summary: Create product (Admin)
+      responses:
+        '201':
+          description: Product created
+  /api/cart:
+    get:
+      summary: Get current user cart
+      responses:
+        '200':
+          description: Cart returned
+  /api/orders/checkout:
+    post:
+      summary: Checkout cart and create order
+      responses:
+        '201':
+          description: Checkout completed
+  /api/orders:
+    get:
+      summary: List current user orders
+      responses:
+        '200':
+          description: Orders returned
+  /api/dashboard/summary:
+    get:
+      summary: Get dashboard summary
+      responses:
+        '200':
+          description: Summary returned

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StoreFlow | Testing Evidence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body>
+  <script src="/assets/js/app.js"></script>
+  <script>
+    app.renderLayout('Evidence of Software Testing', `
+      <section class="card">
+        <h2>2. Testing Methods Used</h2>
+
+        <h3>2.1 Unit Testing (VS Code)</h3>
+        <ul>
+          <li>Tested user registration and login function logic.</li>
+          <li>Validated product CRUD logic in admin flows (create, update, deactivate).</li>
+          <li>Checked cart add/update/delete operations and order status transitions.</li>
+          <li>Verified input validation and backend error handling for invalid payloads.</li>
+        </ul>
+        <p><strong>Result:</strong> Core modules produced expected outputs for normal and invalid input scenarios.</p>
+
+        <h3>2.2 API Testing (Swagger)</h3>
+        <p>Swagger UI is enabled at <a href="/api/docs" target="_blank" rel="noopener noreferrer">/api/docs</a> for interactive endpoint testing and documentation.</p>
+        <ul>
+          <li>Tested endpoints such as:</li>
+          <li>POST /api/auth/register</li>
+          <li>POST /api/auth/login</li>
+          <li>GET /api/products</li>
+          <li>POST /api/products (Admin)</li>
+          <li>POST /api/orders/checkout</li>
+          <li>GET /api/dashboard/summary</li>
+          <li>Verified request/response formats and JSON payload structure.</li>
+          <li>Validated status codes (200, 201, 400, 401, 404, 500).</li>
+        </ul>
+        <p><strong>Result:</strong> APIs responded correctly and aligned with expected business behavior.</p>
+
+        <h3>2.3 System Testing</h3>
+        <ul>
+          <li>Verified full workflow: register/login → browse products → cart → checkout → order tracking.</li>
+          <li>Checked dashboard summaries and order data consistency.</li>
+          <li>Tested notifications generation on order creation and cancellation.</li>
+          <li>Verified responsive behavior across desktop and mobile layout widths.</li>
+        </ul>
+        <p><strong>Result:</strong> System performed correctly under standard usage flows.</p>
+
+        <h3>2.4 User Acceptance Testing (UAT)</h3>
+        <ul>
+          <li>Users successfully discovered products using filters and search.</li>
+          <li>Admin users successfully created and updated product details.</li>
+          <li>Navigation and checkout flow were found intuitive and consistent.</li>
+          <li>Dashboard and order history gave clear user insights.</li>
+        </ul>
+        <p><strong>Result:</strong> Website met user expectations and project requirements.</p>
+      </section>
+
+      <section class="card" style="margin-top:16px;">
+        <h2>3. Test Cases</h2>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Test Case ID</th>
+              <th>Test Scenario</th>
+              <th>Tool Used</th>
+              <th>Expected Result</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>TC1</td><td>User Registration</td><td>Swagger</td><td>Account created</td><td>Pass</td></tr>
+            <tr><td>TC2</td><td>User Login (Valid)</td><td>Swagger</td><td>Login success with token</td><td>Pass</td></tr>
+            <tr><td>TC3</td><td>User Login (Invalid)</td><td>Swagger</td><td>Error message returned</td><td>Pass</td></tr>
+            <tr><td>TC4</td><td>Create Product (Admin)</td><td>VS Code + Browser</td><td>Product added</td><td>Pass</td></tr>
+            <tr><td>TC5</td><td>Update Product (Admin)</td><td>VS Code + Browser</td><td>Product updated</td><td>Pass</td></tr>
+            <tr><td>TC6</td><td>Deactivate Product (Admin)</td><td>Browser</td><td>Product marked inactive</td><td>Pass</td></tr>
+            <tr><td>TC7</td><td>Fetch Product List</td><td>Swagger</td><td>Products returned with filters</td><td>Pass</td></tr>
+            <tr><td>TC8</td><td>Checkout Flow</td><td>Browser</td><td>Order created and cart cleared</td><td>Pass</td></tr>
+            <tr><td>TC9</td><td>Dashboard Display</td><td>Browser</td><td>Accurate order/cart summary</td><td>Pass</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card" style="margin-top:16px;">
+        <h2>4. Tools Used for Testing</h2>
+        <ul>
+          <li>Swagger UI: API testing and endpoint documentation.</li>
+          <li>Visual Studio Code: Code-level testing and debugging.</li>
+          <li>Browser Developer Tools: UI rendering, responsive behavior, and network inspection.</li>
+        </ul>
+      </section>
+
+      <section class="card" style="margin-top:16px;">
+        <h2>5. Issues Identified and Fixes</h2>
+        <ul>
+          <li>Port conflicts during startup (EADDRINUSE): fixed by automatic port fallback in server startup logic.</li>
+          <li>API validation edge cases: fixed by stronger request checks and error responses.</li>
+          <li>UI alignment issues on small screens: resolved through responsive CSS updates.</li>
+          <li>Admin product management gaps: resolved by implementing full CRUD controls in admin panel.</li>
+        </ul>
+      </section>
+    `);
+  </script>
+</body>
+</html>
